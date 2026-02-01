@@ -37,6 +37,40 @@ const els = {
 const getData = () => JSON.parse(localStorage.getItem("gymData")) || { streak: 0 };
 const saveData = (d) => localStorage.setItem("gymData", JSON.stringify(d));
 
+// Helper: debounce to avoid excessive writes
+function debounce(fn, wait = 600) {
+  let t;
+  return function(...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), wait);
+  };
+}
+
+// Small transient toast for unobtrusive feedback
+function showToast(msg = "Saved") {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, {
+    position: 'fixed',
+    bottom: '20px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    background: 'rgba(0,0,0,0.85)',
+    color: '#fff',
+    padding: '8px 14px',
+    borderRadius: '8px',
+    zIndex: 9999,
+    fontSize: '14px'
+  });
+  document.body.appendChild(t);
+  // Try a small haptic/vibration if supported (iPhone may ignore this but it's harmless)
+  if (navigator.vibrate) navigator.vibrate(10);
+  setTimeout(() => t.remove(), 1500);
+}
+
+// Debounced auto-save wrapper
+const autoSave = debounce(() => saveWorkout(true), 800);
+
 // --------------------
 // INITIALIZATION
 // --------------------
@@ -44,6 +78,45 @@ window.onload = () => {
   const d = new Date();
   els.date.value = d.toISOString().split('T')[0]; // Safe ISO date
   renderStreak();
+
+  // Auto-load today's workout to reduce clicks
+  loadWorkout();
+
+  // Auto-load when date changes or Enter pressed
+  els.date.addEventListener('change', loadWorkout);
+  els.date.addEventListener('keydown', e => { if(e.key === 'Enter') loadWorkout(); });
+
+  // Auto-save when weight input changes (debounced)
+  els.weight.addEventListener('input', () => autoSave());
+  // Save immediately on gym checkbox change
+  els.gymCheck.addEventListener('change', () => saveWorkout(true));
+
+  // Modal keyboard actions: Enter to confirm, Escape to close
+  Object.values(els.modalInputs).forEach(inp => {
+    inp.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter') confirmAddSet();
+      if(e.key === 'Escape') closeModal();
+    });
+  });
+
+  // iOS-only: remove desktop keyboard shortcuts (not needed on iPhone)
+  // Add a swipe-right gesture on the workout screen to go back (common iOS gesture)
+  (function setupTouchNavigation(){
+    let startX = 0, startY = 0;
+    const el = document.getElementById('workout');
+    el.addEventListener('touchstart', (e) => {
+      const t = e.touches[0];
+      startX = t.clientX; startY = t.clientY;
+    }, { passive: true });
+
+    el.addEventListener('touchend', (e) => {
+      const t = e.changedTouches[0];
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+      // Detect a right swipe with minimal vertical movement
+      if (dx > 60 && Math.abs(dy) < 40) goHome();
+    });
+  })();
 };
 
 // --------------------
@@ -175,33 +248,55 @@ function confirmAddSet() {
   data[date] ||= {};
   data[date][exercise] ||= [];
   data[date][exercise].push({ weight: w, reps: r, sets: s });
+  // Mark gym attended automatically when adding sets and sync UI
+  data[date].attendedGym = true;
+  els.gymCheck.checked = true;
   
   saveData(data);
   renderTable(date, exercise);
   closeModal();
+  showToast('Set added ✅');
 }
 
 function deleteSet(date, exercise, index) {
   const data = getData();
   data[date][exercise].splice(index, 1);
+
+  // Remove exercise key if it has no sets left
+  if (data[date][exercise].length === 0) {
+    delete data[date][exercise];
+  }
+
+  // If there are no sets left for any exercise that day, unmark gym attendance
+  const hasAnySets = Object.keys(data[date] || {}).some(k => Array.isArray(data[date][k]) && data[date][k].length > 0);
+  if (!hasAnySets) {
+    data[date].attendedGym = false;
+    // If the currently loaded date matches, reflect in the UI
+    if (els.date.value === date) els.gymCheck.checked = false;
+  }
+
   saveData(data);
   renderTable(date, exercise);
+  showToast('Set removed');
 }
 
 // --------------------
 // SAVE & EXPORT
 // --------------------
-function saveWorkout() {
+function saveWorkout(silent = false) {
   const date = els.date.value;
+  if(!date) return;
   const data = getData();
   data[date] ||= {};
   data[date].bodyWeight = els.weight.value;
   data[date].attendedGym = els.gymCheck.checked;
   saveData(data);
-  alert("Workout Saved!");
+  if(!silent) showToast('Workout saved ✅');
 }
 
 function goHome() {
+  // Auto-save before returning home
+  saveWorkout(true);
   document.getElementById("workout").classList.add("hidden");
   document.getElementById("home").classList.remove("hidden");
   renderStreak();
