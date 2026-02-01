@@ -2,14 +2,15 @@
 // ROUTINE & CONFIG
 // --------------------
 const routine = {
-  Monday: { name: "Chest + Triceps", exercises: ["Bench Press", "Incline DB Press", "Tricep Pushdown"] },
-  Tuesday: { name: "Back + Biceps", exercises: ["Lat Pulldown", "Barbell Row", "Bicep Curl"] },
-  Wednesday: { name: "Shoulders + Abs", exercises: ["Overhead Press", "Lateral Raise", "Plank"] },
-  Thursday: { name: "Lower Body", exercises: ["Squat", "Leg Press", "Calf Raise"] },
-  Friday: { name: "Abs + Cardio", exercises: ["Crunches", "Leg Raises", "Treadmill"] },
-  Saturday: { name: "Full Body", exercises: ["Deadlift", "Push Ups", "Pull Ups"] },
+  Monday: { name: "Chest + Triceps", exercises: ["ramp-up sets - Incline DB Press", "Decline DB Press", "Pec Deck Flies","Push Downs", "One arm dumbell tricep extension","CardioMon"] },
+  Tuesday: { name: "Back + Biceps", exercises: ["Lat Pulldown", "Seated Rows", "Bicep Curl", "Hammer Curl" ,"CardioTue"] },
+  Wednesday: { name: "Shoulders", exercises: ["Overhead Press", "Lateral Raise", "Shrugs", "Pec Deck Rear-Delt Laterals","CardioWed"] },
+  Thursday: { name: "Lower Body", exercises: ["Squat", "Lunges", "Leg Curl", "Leg Press", "Leg Extension", "Calf Raise" ,"CardioThurs"] },
+  Friday: { name: "Abs + Cardio", exercises: ["SitUps", "Crunches", "Leg Raises", "Core Twist", "Planks", "CardioFri"] },
+  Saturday: { name: "Full Body (Light)", exercises: ["Mobility","Weak Point Training","Light Compound Practice","Stretching"] },
   Sunday: { name: "Rest", exercises: [] }
 };
+
 
 // --------------------
 // STATE
@@ -70,6 +71,20 @@ function showToast(msg = "Saved") {
 
 // Debounced auto-save wrapper
 const autoSave = debounce(() => saveWorkout(true), 800);
+
+// Create a safe slug/id from an exercise name
+function slugify(str) {
+  return String(str)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-') // replace non-alphanum with '-'
+    .replace(/^-+|-+$/g, ''); // trim leading/trailing '-'
+}
+
+// Generate a DOM-safe id for an exercise (prefix with 'ex-')
+function exerciseId(name) {
+  return 'ex-' + slugify(name);
+}
 
 // --------------------
 // INITIALIZATION
@@ -175,44 +190,71 @@ function loadWorkout() {
   document.getElementById("home").classList.add("hidden");
   document.getElementById("workout").classList.remove("hidden");
   
-  document.getElementById("dayTitle").innerText = `${dayName} - ${routine[dayName]?.name || "Rest"}`;
+  const exercises = routine[dayName]?.exercises || [];
+  document.getElementById("dayTitle").innerText = `${dayName} - ${routine[dayName]?.name || "Rest"} (${exercises.length} exercise${exercises.length === 1 ? '' : 's'})`;
   els.weight.value = data[dateVal].bodyWeight || "";
   els.gymCheck.checked = !!data[dateVal].attendedGym;
   
   els.container.innerHTML = "";
-  
-  const exercises = routine[dayName]?.exercises || [];
+
+  // Validate routine sanity (helpful when editing routine in source)
+  if (exercises.length > 0) {
+    const slugs = exercises.map(s => slugify(s));
+    if (new Set(slugs).size !== slugs.length) {
+      console.warn('Duplicate exercise names detected for', dayName, exercises);
+      showToast('Warning: duplicate exercise names may cause data collisions');
+    }
+    const nonStrings = exercises.filter(e => typeof e !== 'string');
+    if (nonStrings.length > 0) {
+      console.warn('Non-string exercise entries detected:', nonStrings);
+      showToast('Warning: Some exercises have invalid format');
+    }
+  }
+
   if(exercises.length === 0) {
     els.container.innerHTML = "<p style='text-align:center; color:#666;'>No exercises for today.</p>";
   } else {
     exercises.forEach(ex => createExerciseCard(dateVal, ex));
+    // sanity check: ensure number of created cards matches exercises
+    const created = els.container.children.length;
+    if (created !== exercises.length) {
+      console.warn(`Expected ${exercises.length} exercise cards, but created ${created}.`, {dayName, exercises});
+      showToast('Warning: Some exercises failed to render — check console');
+    }
   }
 }
 
 function createExerciseCard(date, exercise) {
   const div = document.createElement("div");
   div.className = "card";
+  const tid = exerciseId(exercise);
   div.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:center;">
         <h3>${exercise}</h3>
     </div>
-    <table id="table-${exercise.replace(/\s/g, '')}">
+    <table id="${tid}">
       <thead><tr><th>#</th><th>KG</th><th>REPS</th><th>SETS</th><th></th></tr></thead>
       <tbody></tbody>
     </table>
-    <button onclick="openAddSetModal('${date}', '${exercise}')" class="add-btn">Add Set +</button>
-  `;
+    <button class="add-btn">Add Set +</button>
+  `; 
   els.container.appendChild(div);
+  // attach event listener safely to avoid quoting issues in names
+  const btn = div.querySelector('.add-btn');
+  if (btn) btn.addEventListener('click', () => openAddSetModal(date, exercise));
   renderTable(date, exercise);
 }
 
 function renderTable(date, exercise) {
   const data = getData();
   const list = data[date]?.[exercise];
-  if(!list || !Array.isArray(list)) return;
 
-  const tbody = document.getElementById(`table-${exercise.replace(/\s/g, '')}`).querySelector("tbody");
+  const tbodyEl = document.getElementById(exerciseId(exercise));
+  if(!tbodyEl) return; // safety
+  const tbody = tbodyEl.querySelector("tbody");
   tbody.innerHTML = "";
+
+  if(!list || !Array.isArray(list)) return;
 
   list.forEach((set, i) => {
     const tr = document.createElement("tr");
@@ -276,10 +318,13 @@ function confirmAddSet() {
 
 function deleteSet(date, exercise, index) {
   const data = getData();
-  data[date][exercise].splice(index, 1);
+  const list = data[date] && data[date][exercise];
+  if(!list || !Array.isArray(list)) return;
+  if (index < 0 || index >= list.length) return;
+  list.splice(index, 1);
 
   // Remove exercise key if it has no sets left
-  if (data[date][exercise].length === 0) {
+  if (list.length === 0) {
     delete data[date][exercise];
   }
 
