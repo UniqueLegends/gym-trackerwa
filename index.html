@@ -7,6 +7,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="Track your gym workouts." />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" href="icons/icon-192.svg" />
     <title>🏋️ Gym Tracker</title>
     <link rel="stylesheet" href="style.css" />
   </head>
@@ -19,7 +21,7 @@
           <label for="workoutDate">Select Date</label>
           <input type="date" id="workoutDate" autofocus />
           <button onclick="loadWorkout()">Open Workout</button>
-          <p class="hint" style="color:#aaa; font-size:.9rem; margin-top:8px;">Tip: Press Enter to open, or use <kbd>Ctrl/Cmd+S</kbd> to save. Changes auto-save.</p>
+          <p class="hint" style="color:#aaa; font-size:.9rem; margin-top:8px;">Tip: Tap "Open" to load a date. Changes auto-save. Swipe right on a workout to go back.</p>
         </div>
 
         <div class="card streak-card">

@@ -117,6 +117,22 @@ window.onload = () => {
       if (dx > 60 && Math.abs(dy) < 40) goHome();
     });
   })();
+
+  // Register a minimal service worker to enable install & offline cache
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js').then(reg => {
+      console.log('Service Worker registered:', reg.scope);
+    }).catch(err => console.warn('SW registration failed:', err));
+  }
+
+  // Keep a reference to the beforeinstallprompt event (Android/Chrome)
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    showToast('Install available — tap the share menu to add to Home Screen');
+    // You could show a custom Install UI here and call deferredPrompt.prompt() when user taps it.
+  });
 };
 
 // --------------------
