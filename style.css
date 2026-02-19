@@ -1,344 +1,166 @@
-/* iOS-inspired style for diary and concepts app */
+:root {
+  --bg: #0d0d0d;
+  --card: #1c1c1e; /* Darker iOS style card */
+  --text: #ffffff;
+  --accent: #0a84ff;
+  --danger: #ff453a;
+}
 
-/* Dark theme global body */
+* {
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
-    margin: 0;
-    padding: 0;
-    background-color: #000;
-    color: #fff;
-    font-size: 18px;
-    line-height: 1.7;
-    letter-spacing: 0.3px;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-}
-html, body {
-    height: 100%;
+  margin: 0;
+  background-color: #000;
+  color: var(--text);
+  padding-bottom: env(safe-area-inset-bottom);
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Splash overlay (initial blank screen) remains unchanged */
-#splash {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: #000;
-    z-index: 9999;
+/* iOS-specific tweaks (applies when the browser supports touch scrolling) */
+@supports (-webkit-overflow-scrolling: touch) {
+  .app { padding-top: calc(20px + env(safe-area-inset-top)); padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+  button { min-height: 54px; border-radius: 14px; font-size: 18px; padding: 16px; }
+  .actions button { width: 48%; display: inline-block; margin-top: 12px; }
+  .card { padding: 18px; border-radius: 18px; }
+  input { font-size: 18px; padding: 14px; border-radius: 12px; }
+  .modal-content { padding: 20px; border-radius: 22px; }
+}
+.app {
+  padding: 20px 16px;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
-/* container becomes the full writing surface */
-.container {
-    max-width: 980px; /* allow more horizontal room on wide phones/tablets */
-    margin: 0 auto;
-    /* occupy most of the viewport so textarea can expand */
-    min-height: calc(100vh - 40px);
-    background-color: #111;       /* slightly lighter than body */
-    border-radius: 28px;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-    /* reduce side padding so writing canvas gets more horizontal space on phones */
-    padding: 40px 18px 60px;
-    display: flex;
-    flex-direction: column;
-    overflow: visible;            /* let page scroll instead of inner */
-    position: relative;
+/* INPUT FIXES FOR iOS */
+input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  background: #2c2c2e;
+  border: 1px solid #3a3a3c;
+  color: #fff;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 16px; /* Prevents auto-zoom on iPhone */
+  margin-top: 6px;
 }
 
-/* Writing area wrapper to position the fake cursor and allow clicks */
-#writingArea {
-    position: relative;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto; /* allow writing area to grow to fill container */
+input:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
-/* Fake cursor visible when textarea isn't focused to give a tappable target */
-#fakeCursor {
-    position: absolute;
-    left: 18px;    /* align to writingArea inner edge */
-    top: 18px;     /* align to writingArea top */
-    width: 2px;
-    height: 22px;
-    background: rgba(106,169,255,0.9);
-    border-radius: 1px;
-    animation: blink 1s steps(1) infinite;
-    /* let taps pass through to the underlying textarea so native focus works */
-    pointer-events: none;
-    z-index: 2;
+/* Checkbox should look native and not inherit full-width input styles */
+input[type="checkbox"] {
+  -webkit-appearance: checkbox;
+  appearance: auto;
+  width: auto;
+  height: auto;
+  padding: 0;
+  background: transparent;
+  border: none;
+  margin: 0 6px 0 0;
+  vertical-align: middle;
+  accent-color: var(--accent);
 }
 
-@keyframes blink {
-    0% { opacity: 1 }
-    50% { opacity: 0 }
-    100% { opacity: 1 }
+/* Card Styling */
+.card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
 }
 
-/* hide fake cursor when textarea is focused or contains text */
-.writing-focused #fakeCursor,
-.writing-has-text #fakeCursor {
-    display: none;
-}
-
-/* remove old .section styling since we no longer use it */
-
-h2 {
-    margin-top: 0;
-    font-size: 20px;
-    font-weight: 600;
-}
-
-/* Inputs and textarea generally used only for hidden date picker and diary text */
-input[type="date"] {
-    /* hidden visually; date is shown separately */
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-}
-
-/* diary textarea as document-style canvas */
-#diaryText {
-    width: 100%;
-    min-height: 60vh;
-    background: linear-gradient(180deg, #111 0%, #1a1a1a 50%, #111 100%);
-    color: #ddd;
-    font-size: 18px;
-    line-height: 1.7;
-    letter-spacing: 0.3px;
-    border: none;
-    outline: none;
-    resize: none;
-    padding: 0;
-    caret-color: #6aa9ff;
-    overflow: auto;   /* IMPORTANT */
-}
-
-
-/* keep the date picker reasonably sized so it doesn’t dominate
-   the right-hand side of a wide layout */
-input[type="date"] {
-    max-width: 220px;
-}
-
-/* date display header styling */
-#dateDisplay {
-    text-align: center;
-    font-size: 19px;
-    color: rgba(255,255,255,0.85);
-    font-weight: 600;
-    margin-bottom: 20px;
-}
-
-#header {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-#conceptBtn {
-    position: absolute;
-    left: 0;
-}
-
-#lockBtn {
-    position: absolute;
-    right: 0;
-}
-
-/* concept styles removed; feature hidden */
-
-/* no additional focus styling needed — keep things minimal */
-
-/* Buttons */
-/* only a tiny lock button remains */
 button {
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-    border: none;
-    color: rgba(255,255,255,0.6);
-    font-size: 20px;
-    cursor: pointer;
-    padding: 4px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 17px;
+  font-weight: 600;
+  margin-top: 10px;
+  cursor: pointer;
 }
 
-button:hover {
-    color: rgba(255,255,255,0.9);
+button.danger {
+  background: var(--danger);
 }
 
-/* removed concept-related rules entirely */
-
-/* Calculator layout inside splash */
-#calculator {
-    /* scale the calculator to the viewport while keeping a sensible max */
-    width: min(94vw, 420px);
-    max-width: 420px;
-    margin: 60px auto 0;
-    color: #fff;
-    box-sizing: border-box;
+/* MODAL STYLES */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
 }
 
-/* ─── concept view (Obsidian mode) ─────────────────────────────────── */
-#conceptView {
-    position: fixed;
-    inset: 0;
-    background: #111111;
-    color: #ddd;
-    z-index: 2000;
-    padding: 40px 30px;
-    overflow-y: auto;
-    display: none;
-    /* optional fade animation */
+.modal-content {
+  background: #1c1c1e;
+  width: 90%;
+  max-width: 350px;
+  padding: 24px;
+  border-radius: 20px;
+  border: 1px solid #333;
+  animation: slideUp 0.2s ease-out;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+}
+.row > div {
+  flex: 1;
+}
+
+.hidden {
+  display: none !important;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
     opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-}
-
-#conceptView.active {
-    display: block;
+  }
+  to {
+    transform: translateY(0);
     opacity: 1;
-    pointer-events: auto;
+  }
 }
 
-.concept-wrapper {
-    max-width: 900px;
-    margin: 0 auto;
+/* Table Cleanups */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+th,
+td {
+  padding: 8px;
+  text-align: center;
+  border-bottom: 1px solid #333;
+}
+th {
+  color: #888;
+  font-size: 12px;
+  text-transform: uppercase;
 }
 
-.concept-header {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    margin-bottom: 30px;
-}
-
-.concept-header h2 {
-    font-size: 22px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-}
-
-.concept-header button {
-    background: transparent;
-    border: none;
-    color: #ccc;
-    font-size: 20px;
-    cursor: pointer;
-}
-
-.concept-input-area input,
-.concept-input-area textarea {
-    width: 100%;
-    background: #1a1a1a;
-    border: 1px solid #2a2a2a;
-    color: #ccc;
-    padding: 14px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-    font-size: 15px;
-}
-
-.concept-input-area textarea {
-    min-height: 120px;
-    resize: none;
-}
-
-.concept-input-area button {
-    background: #222;
-    border: 1px solid #333;
-    color: #ccc;
-    padding: 10px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
-.concept-input-area button:hover {
-    background: #2a2a2a;
-}
-
-.concept-grid {
-    margin-top: 40px;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 20px;
-}
-
-.concept-row {
-    position: relative;
-    padding: 12px 10px;
-    border-bottom: 1px solid #222;
-}
-
-.concept-row h3 {
-    margin: 0 0 6px 0;
-    font-size: 15px;
-    color: #fff;
-}
-
-.concept-row p {
-    margin: 0;
-    font-size: 14px;
-    color: #aaa;
-    line-height: 1.4;
-}
-
-.concept-delete {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    background: transparent;
-    border: none;
-    color: #888;
-    font-size: 16px;
-    cursor: pointer;
-}
-.concept-delete:hover {
-    color: #ccc;
-}
-
-#calcDisplay {
-    width: 100%;
-    padding: 18px;
-    font-size: 28px; /* bigger on modern phones */
-    text-align: right;
-    border: 1px solid #444;
-    border-radius: 8px;
-    background-color: #000;
-    color: #fff;
-}
-
-.calc-buttons {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    grid-gap: 10px;
-    margin-top: 10px;
-}
-
-.calc-buttons button {
-    padding: 14px 12px;
-    font-size: 18px;
-    border-radius: 10px;
-    background-color: #333;
-    color: #fff;
-}
-
-/* tighter sizing on very small screens to avoid overflow */
-@media (max-width: 380px) {
-    #calcDisplay { font-size: 20px; padding: 10px; }
-    .calc-buttons { grid-gap: 8px; }
-    .calc-buttons button { padding: 10px; font-size: 16px; }
-}
-
-.calc-buttons button.operator {
-    background-color: #ff9500;
-}
-
-/* Responsive tweaks */
-@media (max-width: 400px) {
-    body {
-        padding: 10px;
-    }
-    .container {
-        padding: 30px 20px 50px;
-    }
+h1 {
+  text-align: center;
+  margin-bottom: 20px;
 }
